@@ -1,46 +1,65 @@
-COMPILER = g++
-UNAME := $(shell uname)
+CXX = $(shell which clang++)
+# -- if you want to test 32-bit use this instead,
+#    it sometimes reveals type portability issues
+# CXX = $(shell which clang++) -m32
+ifneq ($(CXX),)
+  $(warning Using clang: "$(CXX)")
+  ARCH = -D__extern_always_inline=inline
+else
+  CXX = g++
+#$(warning Using g++)
+ARCH = $(shell test `g++ -v 2>&1 | tail -1 | cut -d ' ' -f 3 | cut -d '.' -f 1,2` \< 4.3 && echo -march=nocona || echo -march=native)
+endif
 
+ifeq ($(CXX),)
+  $(warning No compiler found)
+  exit 1
+endif
+
+UNAME := $(shell uname)
 LIBS = -l boost_program_options -l pthread -l z
-BOOST_INCLUDE = /usr/include
+BOOST_INCLUDE = -I /usr/include
+BOOST_LIBRARY = -L /usr/lib
+
 ifeq ($(UNAME), FreeBSD)
-LIBS = -l boost_program_options	-l pthread -l z -l compat
-BOOST_INCLUDE = /usr/local/include
+  LIBS = -l boost_program_options -l pthread -l z -l compat
+  BOOST_INCLUDE = -I /usr/local/include
 endif
 ifeq "CYGWIN" "$(findstring CYGWIN,$(UNAME))"
-LIBS = -l boost_program_options-mt -l pthread -l z
-BOOST_INCLUDE = /usr/include
+  LIBS = -l boost_program_options-mt -l pthread -l z
+  BOOST_INCLUDE = -I /usr/include
 endif
 ifeq ($(UNAME), Darwin)
-LIBS = -lboost_program_options-mt -lboost_serialization-mt -l pthread -l z
-BOOST_INCLUDE = /usr/local/include
+  LIBS = -lboost_program_options-mt -lboost_serialization-mt -l pthread -l z
+  # On Macs, the location isn't always clear
+  #	brew uses /usr/local
+  #	but /opt/local seems to be preferred by some users
+  #	so we try them both
+  BOOST_INCLUDE = -I /usr/local/include -I /opt/local/include
+  BOOST_LIBRARY = -L /usr/local/lib     -L /opt/local/lib
 endif
-
-BOOST_LIBRARY = /usr/local/lib
-
-ARCH = $(shell test `g++ -v 2>&1 | tail -1 | cut -d ' ' -f 3 | cut -d '.' -f 1,2` \< 4.3 && echo -march=nocona || echo -march=native)
 
 #LIBS = -l boost_program_options-gcc34 -l pthread -l z
 
 OPTIM_FLAGS = -O3 -fomit-frame-pointer -fno-strict-aliasing -ffast-math #uncomment for speed, comment for testability
 ifeq ($(UNAME), FreeBSD)
-
-WARN_FLAGS = -Wall
+  WARN_FLAGS = -Wall
 else
-WARN_FLAGS = -Wall -pedantic
+  WARN_FLAGS = -Wall -pedantic
 endif
 
 # for normal fast execution.
-FLAGS = $(ARCH) $(WARN_FLAGS) $(OPTIM_FLAGS) -D_FILE_OFFSET_BITS=64 -I $(BOOST_INCLUDE) #-DVW_LDA_NO_SSE
+FLAGS = $(CFLAGS) $(LDFLAGS) $(ARCH) $(WARN_FLAGS) $(OPTIM_FLAGS) -D_FILE_OFFSET_BITS=64 -DNDEBUG $(BOOST_INCLUDE) #-DVW_LDA_NO_SSE
 
-# for profiling
-#FLAGS = $(ARCH) $(WARN_FLAGS) -O3 -fno-strict-aliasing -ffast-math -D_FILE_OFFSET_BITS=64 -I $(BOOST_INCLUDE) -pg #-DVW_LDA_NO_SSE
+# for profiling -- note that it needs to be gcc
+#FLAGS = $(CFLAGS) $(LDFLAGS) $(ARCH) $(WARN_FLAGS) -O2 -fno-strict-aliasing -ffast-math -D_FILE_OFFSET_BITS=64 $(BOOST_INCLUDE) -pg #-DVW_LDA_NO_S
+#CXX = g++
 
-# for valgrind
-#FLAGS = $(ARCH) $(WARN_FLAGS) -ffast-math -D_FILE_OFFSET_BITS=64 -I $(BOOST_INCLUDE) -g -O0
+# for valgrind / gdb debugging
+#FLAGS = $(CFLAGS) $(LDFLAGS) $(ARCH) $(WARN_FLAGS) -ffast-math -D_FILE_OFFSET_BITS=64 $(BOOST_INCLUDE) -g -O0
 
 # for valgrind profiling: run 'valgrind --tool=callgrind PROGRAM' then 'callgrind_annotate --tree=both --inclusive=yes'
-#FLAGS = -Wall $(ARCH) -ffast-math -D_FILE_OFFSET_BITS=64 -I $(BOOST_INCLUDE) -g -O3 -fomit-frame-pointer -ffast-math -fno-strict-aliasing
+#FLAGS = $(CFLAGS) $(LDFLAGS) -Wall $(ARCH) -ffast-math -D_FILE_OFFSET_BITS=64 $(BOOST_INCLUDE) -g -O2 -fomit-frame-pointer -ffast-math -fno-strict-aliasing
 
 BINARIES = vw active_interactor
 MANPAGES = vw.1
@@ -56,13 +75,13 @@ spanning_tree:
 	cd cluster; $(MAKE)
 
 vw:
-	cd vowpalwabbit; $(MAKE) things
+	cd vowpalwabbit; $(MAKE) -j 8 things
 
 active_interactor:
 	cd vowpalwabbit; $(MAKE)
 
 library_example: vw
-	cd library; $(MAKE)
+	cd library; $(MAKE) -j 8
 
 .FORCE:
 
@@ -75,3 +94,4 @@ install: $(BINARIES)
 
 clean:
 	cd vowpalwabbit; $(MAKE) clean; cd ../cluster; $(MAKE) clean
+

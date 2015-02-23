@@ -3,8 +3,8 @@ Copyright (c) by respective owners including Yahoo!, Microsoft, and
 individual contributors. All rights reserved.  Released under a BSD
 license as described in the file LICENSE.
  */
-#ifndef VARRAY_H__
-#define VARRAY_H__
+#ifndef VARRAY_H
+#define VARRAY_H
 #include <iostream>
 #include <stdlib.h>
 #include <string.h>
@@ -32,6 +32,7 @@ template<class T> class v_array{
   void decr() { end--;}
   v_array() { begin= NULL; end = NULL; end_array=NULL; erase_count = 0;}
   T& operator[](size_t i) { return begin[i]; }
+  T& get(size_t i) { return begin[i]; }
   size_t size(){return end-begin;}
   void resize(size_t length, bool zero_everything=false)
     {
@@ -70,6 +71,65 @@ template<class T> class v_array{
       resize(2 * (end_array-begin) + 3);
     *(end++) = new_ele;
   }
+  size_t find_sorted(const T& ele)  //index of the smallest element >= ele, return true if element is in the array
+  {
+    size_t size = end - begin;
+    size_t a = 0;			
+    size_t b = size;	
+    size_t i = (a + b) / 2;
+
+    while(b - a > 1)
+    {
+	if(begin[i] < ele)	//if a = 0, size = 1, if in while we have b - a >= 1 the loop is infinite
+		a = i;
+	else if(begin[i] > ele)
+		b = i;
+	else
+		return i;
+
+	i = (a + b) / 2;		
+    }
+
+    if((size == 0) || (begin[a] > ele) || (begin[a] == ele))		//pusta tablica, nie wchodzi w while
+	return a;
+    else	//size = 1, ele = 1, begin[0] = 0	
+	return b;
+ }
+ size_t unique_add_sorted(const T &new_ele)//ANNA
+ {
+   size_t index = 0;
+   size_t size = end - begin;
+   size_t to_move;
+
+   if(!contain_sorted(new_ele, index))
+   {
+	if(end == end_array)
+		resize(2 * (end_array-begin) + 3);
+
+	to_move = size - index;
+
+	if(to_move > 0)
+		memmove(begin + index + 1, begin + index, to_move * sizeof(T));   //kopiuje to_move*.. bytow z begin+index do begin+index+1
+
+	begin[index] = new_ele;
+
+	end++;
+   }
+
+   return index;
+ }
+ bool contain_sorted(const T &ele, size_t& index) 
+ {
+   index = find_sorted(ele);
+
+   if(index == this->size())
+	return false;
+
+   if(begin[index] == ele) 
+	return true;		
+
+   return false;	
+ }
 };
 
 
@@ -91,10 +151,10 @@ template<class T> void copy_array(v_array<T>& dst, v_array<T> src)
   push_many(dst, src.begin, src.size());
 }
 
-template<class T> void copy_array(v_array<T>& dst, v_array<T> src, T(*copy_item)(T))
+template<class T> void copy_array(v_array<T>& dst, v_array<T> src, T(*copy_item)(T&))
 {
   dst.erase();
-  for (T*item = src.begin; item != src.end; item++)
+  for (T*item = src.begin; item != src.end; ++item)
     dst.push_back(copy_item(*item));
 }
 
@@ -120,6 +180,6 @@ template<class T> v_array<T> pop(v_array<v_array<T> > &stack)
     return *(--stack.end);
   else
     return v_array<T>();
-}
+}  
 
 #endif  // VARRAY_H__

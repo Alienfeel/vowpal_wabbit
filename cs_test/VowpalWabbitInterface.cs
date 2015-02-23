@@ -9,7 +9,7 @@ namespace Microsoft.Research.MachineLearning
     public sealed class VowpalWabbitInterface
     {
         [StructLayout(LayoutKind.Sequential)]
-        internal struct FEATURE_SPACE
+        public struct FEATURE_SPACE
         {
             public byte name;
             public IntPtr features;     // points to a FEATURE[]
@@ -32,7 +32,13 @@ namespace Microsoft.Research.MachineLearning
         [DllImport("libvw.dll", EntryPoint = "VW_ImportExample", CallingConvention = CallingConvention.StdCall)]
         // features points to a FEATURE_SPACE[]
         public static extern IntPtr ImportExample(IntPtr vw, IntPtr features, int length);
-        
+
+        [DllImport("libvw.dll", EntryPoint = "VW_ExportExample", CallingConvention = CallingConvention.StdCall)]
+        public static extern IntPtr ExportExample(IntPtr vw, IntPtr example, ref int length);
+
+        [DllImport("libvw.dll", EntryPoint = "VW_ReleaseFeatureSpace", CallingConvention = CallingConvention.StdCall)]
+        public static extern IntPtr ReleaseFeatureSpace(IntPtr fs, int length);
+       
         [DllImport("libvw.dll", EntryPoint = "VW_ReadExample", CallingConvention = CallingConvention.StdCall)]
         public static extern IntPtr ReadExample(IntPtr vw, [MarshalAs(UnmanagedType.LPWStr)]string exampleString);
 
@@ -47,7 +53,34 @@ namespace Microsoft.Research.MachineLearning
 
         [DllImport("libvw.dll", EntryPoint = "VW_FinishExample", CallingConvention = CallingConvention.StdCall)]
         public static extern void FinishExample(IntPtr vw, IntPtr example);
-        
+
+        [DllImport("libvw.dll", EntryPoint = "VW_GetLabel", CallingConvention = CallingConvention.StdCall)]
+        public static extern float GetLabel(IntPtr example);
+
+        [DllImport("libvw.dll", EntryPoint = "VW_GetImportance", CallingConvention = CallingConvention.StdCall)]
+        public static extern float GetImportance(IntPtr example);
+
+        [DllImport("libvw.dll", EntryPoint = "VW_GetInitial", CallingConvention = CallingConvention.StdCall)]
+        public static extern float GetInitial(IntPtr example);
+
+        [DllImport("libvw.dll", EntryPoint = "VW_GetPrediction", CallingConvention = CallingConvention.StdCall)]
+        public static extern float GetPrediction(IntPtr example);
+
+        [DllImport("libvw.dll", EntryPoint = "VW_GetTagLength", CallingConvention = CallingConvention.StdCall)]
+        public static extern UInt32 GetTagLength(IntPtr example);
+
+        [DllImport("libvw.dll", EntryPoint = "VW_GetTag", CallingConvention = CallingConvention.StdCall)]
+        public static extern byte GetTag(IntPtr example);
+
+        [DllImport("libvw.dll", EntryPoint = "VW_GetFeatureNumber", CallingConvention = CallingConvention.StdCall)]
+        public static extern UInt32 GetFeatureNumber(IntPtr example);
+
+        [DllImport("libvw.dll", EntryPoint = "VW_GetFeatures", CallingConvention = CallingConvention.StdCall)]
+        public static extern IntPtr GetFeatures(IntPtr vw, IntPtr example, ref int length);
+
+        [DllImport("libvw.dll", EntryPoint = "VW_ReturnFeatures", CallingConvention = CallingConvention.StdCall)]
+        public static extern void ReturnFeatures(IntPtr features);
+
         [DllImport("libvw.dll", EntryPoint = "VW_HashSpace", CallingConvention = CallingConvention.StdCall)]
         public static extern uint HashSpace(IntPtr vw, [MarshalAs(UnmanagedType.LPWStr)]string s);
         
@@ -61,9 +94,15 @@ namespace Microsoft.Research.MachineLearning
         public static extern void AddLabel(IntPtr example, float label=float.MaxValue, float weight=1, float initial=0);
 
         [DllImport("libvw.dll", EntryPoint = "VW_Get_Weight", CallingConvention = CallingConvention.StdCall)]
-        public static extern void Get_Weight(IntPtr vw, UInt32 index);
+        public static extern float Get_Weight(IntPtr vw, UInt32 index, UInt32 offset);
+
+        [DllImport("libvw.dll", EntryPoint = "VW_Set_Weight", CallingConvention = CallingConvention.StdCall)]
+        public static extern void Set_Weight(IntPtr vw, UInt32 index, UInt32 offset, float value);
 
         [DllImport("libvw.dll", EntryPoint = "VW_Num_Weights", CallingConvention = CallingConvention.StdCall)]
         public static extern UInt32 Num_Weights(IntPtr vw);
+
+        [DllImport("libvw.dll", EntryPoint = "VW_Get_Stride", CallingConvention = CallingConvention.StdCall)]
+        public static extern UInt32 Get_Stride(IntPtr vw);    
     }
 }
